@@ -170,7 +170,7 @@ async def traceroute(message: types.Message):
         return
     parts = message.text.strip().split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip():
-        await message.answer("❗️ Напишите адрес для трассировки, например:\n<code>/trace_route google.com</code>", parse_mode="HTML")
+        await message.answer("❗️ Напишите адрес для трассировки, например:\n<code>/traceroute google.com</code>", parse_mode="HTML")
         return
 
     host = parts[1].strip()
