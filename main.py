@@ -1,5 +1,6 @@
 import os
 import subprocess
+import psutil
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
