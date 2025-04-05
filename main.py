@@ -29,6 +29,9 @@ async def disk_usage(message: types.Message):
 @dp.message(Command("service_status"))
 async def service_status(message: types.Message):
     service_name = message.text.split()[-1]
+    if service_name == '':
+        await message.answer("Напишите название сервиса.")
+        return
     result = subprocess.run(["systemctl", "status", service_name], capture_output=True, text=True)
     await message.answer(f"<code>{result.stdout}</code>", parse_mode="HTML")
 
