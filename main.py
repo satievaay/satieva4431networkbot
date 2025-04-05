@@ -30,6 +30,8 @@ async def disk_usage(message: types.Message):
 
 @dp.message(Command("service_status"))
 async def service_status(message: types.Message):
+    if not validate(message.from_user.id,message.chat.id):
+        return
     parts = message.text.strip().split(maxsplit=1)
 
     if len(parts) < 2 or not parts[1].strip():
@@ -54,6 +56,8 @@ async def service_status(message: types.Message):
 
 @dp.message(Command("ping"))
 async def ping_host(message: types.Message):
+    if not validate(message.from_user.id,message.chat.id):
+        return
     parts = message.text.strip().split(maxsplit=1)
 
     if len(parts) < 2 or not parts[1].strip():
@@ -81,7 +85,9 @@ async def ping_host(message: types.Message):
 
 @dp.message(Command("usage"))
 async def system_usage(message: types.Message):
-    # Get CPU and RAM stats
+    if not validate(message.from_user.id,message.chat.id):
+        return
+    # Получить информацию по загруженности процессора и ОЗУ
     cpu_percent = psutil.cpu_percent(interval=1)
     ram = psutil.virtual_memory()
     ram_used = ram.used / (1024 ** 3)
@@ -96,9 +102,13 @@ async def system_usage(message: types.Message):
 
     await message.answer(response, parse_mode="HTML")
 
+
 @dp.message(Command("main_services_status"))
 async def main_services_status(message: types.Message):
+    if not validate(message.from_user.id,message.chat.id):
+        return
     status_lines = ["📋 <b>Статус сервисов:</b>"]
+
 
     for service in SERVICES:
         result = subprocess.run(
@@ -116,6 +126,8 @@ async def main_services_status(message: types.Message):
 
 @dp.message(Command("restart_service"))
 async def restart_service(message: types.Message):
+    if not validate(message.from_user.id,message.chat.id):
+        return
     parts = message.text.strip().split(maxsplit=1)
 
     if len(parts) < 2 or not parts[1].strip():
