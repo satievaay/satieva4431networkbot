@@ -19,12 +19,14 @@ def validate(user_id, chat_id: int) -> bool:
 @dp.message(Command("start"))
 async def start(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     await message.answer("🚀 Бот для управления сервером активирован!")
 
 @dp.message(Command("disk"))
 async def disk_usage(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     result = subprocess.run(["df", "-h"], capture_output=True, text=True)
     await message.answer(f"<pre>{result.stdout}</pre>", parse_mode="HTML")
@@ -32,6 +34,7 @@ async def disk_usage(message: types.Message):
 @dp.message(Command("service_status"))
 async def service_status(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -58,6 +61,7 @@ async def service_status(message: types.Message):
 @dp.message(Command("ping"))
 async def ping_host(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -69,7 +73,7 @@ async def ping_host(message: types.Message):
 
     try:
         result = subprocess.run(
-            ["ping", "-c", "4", host],  # Sends 4 ping packets
+            ["ping", "-c", "4", host],  # Отправка 4 пакетов ping
             capture_output=True,
             text=True,
             timeout=10
@@ -87,6 +91,7 @@ async def ping_host(message: types.Message):
 @dp.message(Command("usage"))
 async def system_usage(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     # Получить информацию по загруженности процессора и ОЗУ
     cpu_percent = psutil.cpu_percent(interval=1)
@@ -107,6 +112,7 @@ async def system_usage(message: types.Message):
 @dp.message(Command("main_services_status"))
 async def main_services_status(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     status_lines = ["📋 <b>Статус сервисов:</b>"]
 
@@ -128,6 +134,7 @@ async def main_services_status(message: types.Message):
 @dp.message(Command("restart_service"))
 async def restart_service(message: types.Message):
     if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -138,14 +145,14 @@ async def restart_service(message: types.Message):
     service_name = parts[1].strip()
 
     try:
-        # Restart the service using systemctl
+        # Перезапуск службы с помощью systemctl restart
         result = subprocess.run(
             ["sudo", "systemctl", "restart", service_name],
             capture_output=True,
             text=True
         )
 
-        # Check if the service was restarted successfully
+        # Проверка результата перезапуска службы:
         if result.returncode == 0:
             await message.answer(f"✅ Сервис <b>{service_name}</b> успешно перезапущен!", parse_mode="HTML")
         else:
@@ -155,6 +162,29 @@ async def restart_service(message: types.Message):
         await message.answer(f"❌ Ошибка при перезапуске сервиса: <code>{str(e)}</code>", parse_mode="HTML")
     except Exception as e:
         await message.answer(f"❌ Произошла ошибка: <code>{str(e)}</code>", parse_mode="HTML")
+
+@dp.message(Command("traceroute"))
+async def traceroute(message: types.Message):
+    if not validate(message.from_user.id,message.chat.id):
+        await message.answer("Доступ запрещен.")
+        return
+    parts = message.text.strip().split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        await message.answer("❗️ Напишите адрес для трассировки, например:\n<code>/trace_route google.com</code>", parse_mode="HTML")
+        return
+
+    host = parts[1].strip()
+
+    try:
+        result = subprocess.run(
+            ["traceroute", host],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        await message.answer(f"🔍 Трассировка маршрута до <b>{host}</b>:\n<pre>{result.stdout}</pre>", parse_mode="HTML")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при трассировке маршрута: <code>{str(e)}</code>", parse_mode="HTML")
 
 if __name__ == "__main__":
     dp.run_polling(bot)
