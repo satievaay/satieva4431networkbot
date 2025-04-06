@@ -15,19 +15,16 @@ dp = Dispatcher()
 # Константы
 SERVICES = ["cron", "ssh", "sysstat", "mysql"]
 AUTH_DURATION = timedelta(hours=1)
+ALLOWED_USER_IDS = list(map(int, os.getenv("ALLOWED_USER_IDS", "").split(',')))  # Загрузка разрешенных пользователей из .env
 SESSIONS = {}  # user_id: expiry_datetime
 
 def is_authenticated(user_id: int) -> bool:
+    """Проверка, авторизован ли пользователь."""
     return user_id in SESSIONS and SESSIONS[user_id] > datetime.now()
 
-def validate(user_id: int, chat_id: int) -> bool:
-    # Проверка в ЛС — только авторизация
-    if chat_id == user_id:
-        return is_authenticated(user_id)
-    # В группах — по ID
-    allowed_user_ids = list(map(int, os.getenv("ALLOWED_USER_IDS", "").split(',')))
-    allowed_chat_ids = list(map(int, os.getenv("ALLOWED_CHAT_IDS", "").split(',')))
-    return (user_id in allowed_user_ids) and (chat_id in allowed_chat_ids)
+def validate(user_id: int) -> bool:
+    """Проверка, авторизован ли пользователь (независимо от чата)."""
+    return user_id in ALLOWED_USER_IDS and is_authenticated(user_id)
 
 @dp.message(Command("auth"))
 async def auth_command(message: types.Message):
@@ -44,24 +41,24 @@ async def auth_command(message: types.Message):
 
     input_password = parts[1].strip()
     input_hash = hashlib.md5(input_password.encode()).hexdigest()
-    correct_hash = os.getenv("BOT_PASSWORD_HASH")
+    correct_hash = os.getenv("BOT_PASSWORD")
 
     if input_hash == correct_hash:
         SESSIONS[message.from_user.id] = datetime.now() + AUTH_DURATION
-        await message.answer("✅ Успешная авторизация. Доступ активен на 1 день.")
+        await message.answer("✅ Успешная авторизация. Доступ активен на 1 час.")
     else:
         await message.answer("❌ Неверный пароль.")
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
+    if not validate(message.from_user.id):
         await message.answer("⛔️ Доступ запрещен.")
         return
     await message.answer("🚀 Бот для управления сервером активирован!")
 
 @dp.message(Command("disk"))
 async def disk_usage(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
+    if not validate(message.from_user.id):
         await message.answer("⛔️ Доступ запрещен.")
         return
     result = subprocess.run(["df", "-h"], capture_output=True, text=True)
@@ -69,7 +66,7 @@ async def disk_usage(message: types.Message):
 
 @dp.message(Command("service_status"))
 async def service_status(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
+    if not validate(message.from_user.id):
         await message.answer("⛔️ Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
@@ -109,7 +106,7 @@ async def ping_host(message: types.Message):
 
     try:
         result = subprocess.run(
-            ["ping", "-c", "4", host],  # Отправка 4 пакетов ping
+            ["ping", "-c", "4", host],
             capture_output=True,
             text=True,
             timeout=10
@@ -129,7 +126,6 @@ async def system_usage(message: types.Message):
     if not validate(message.from_user.id, message.chat.id):
         await message.answer("⛔️ Доступ запрещен.")
         return
-    # Получить информацию по загруженности процессора и ОЗУ
     cpu_percent = psutil.cpu_percent(interval=1)
     ram = psutil.virtual_memory()
     ram_used = ram.used / (1024 ** 3)
@@ -151,7 +147,6 @@ async def main_services_status(message: types.Message):
         await message.answer("⛔️ Доступ запрещен.")
         return
     status_lines = ["📋 <b>Статус сервисов:</b>"]
-
 
     for service in SERVICES:
         result = subprocess.run(
@@ -181,14 +176,12 @@ async def restart_service(message: types.Message):
     service_name = parts[1].strip()
 
     try:
-        # Перезапуск службы с помощью systemctl restart
         result = subprocess.run(
             ["sudo", "systemctl", "restart", service_name],
             capture_output=True,
             text=True
         )
 
-        # Проверка результата перезапуска службы:
         if result.returncode == 0:
             await message.answer(f"✅ Сервис <b>{service_name}</b> успешно перезапущен!", parse_mode="HTML")
         else:
