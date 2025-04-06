@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from aiogram.types import BotCommand
 import asyncio
 
 load_dotenv()
@@ -28,6 +29,23 @@ def is_authenticated(user_id: int) -> bool:
 def validate(user_id: int) -> bool:
     """Проверка, авторизован ли пользователь (независимо от чата)."""
     return user_id in ALLOWED_USER_IDS and is_authenticated(user_id)
+
+async def set_bot_commands(bot: Bot):
+    commands = [
+        BotCommand(command="start", description="Запуск бота"),
+        BotCommand(command="auth", description="Авторизация"),
+        BotCommand(command="disk", description="Показать использование диска"),
+        BotCommand(command="usage", description="Показать загрузку CPU и RAM"),
+        BotCommand(command="service_status", description="Статус сервиса (нужен аргумент)"),
+        BotCommand(command="main_services_status", description="Статус основных сервисов"),
+        BotCommand(command="restart_service", description="Перезапуск сервиса (нужен аргумент)"),
+        BotCommand(command="ping", description="Пинг хоста (нужен аргумент)"),
+        BotCommand(command="traceroute", description="Трассировка маршрута (нужен аргумент)"),
+        BotCommand(command="backup", description="Создать бэкап конфигов"),
+        BotCommand(command="monitor_start", description="Включить мониторинг"),
+        BotCommand(command="monitor_stop", description="Выключить мониторинг"),
+    ]
+    await bot.set_my_commands(commands)
 
 @dp.message(Command("auth"))
 async def auth_command(message: types.Message):
