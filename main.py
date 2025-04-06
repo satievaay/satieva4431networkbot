@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import asyncio
 
 load_dotenv()
 bot = Bot(token=os.getenv("BOT_TOKEN"))
@@ -17,6 +18,8 @@ SERVICES = ["cron", "ssh", "sysstat", "mysql"]
 AUTH_DURATION = timedelta(hours=1)
 ALLOWED_USER_IDS = list(map(int, os.getenv("ALLOWED_USER_IDS", "").split(',')))  # Загрузка разрешенных пользователей из .env
 SESSIONS = {}  # user_id: expiry_datetime
+MONITORING_INTERVAL = 300  # 5 минут в секундах
+MONITORING_USERS = set()  # Пользователи, получающие мониторинг
 
 def is_authenticated(user_id: int) -> bool:
     """Проверка, авторизован ли пользователь."""
@@ -252,5 +255,62 @@ async def backup_configs(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка при создании бэкапа: <code>{str(e)}</code>", parse_mode="HTML")
 
+async def send_monitoring_data(user_id: int):
+    """Отправляет данные мониторинга пользователю."""
+    try:
+        # Отправляем данные диска
+        disk_result = subprocess.run(["df", "-h"], capture_output=True, text=True)
+        await bot.send_message(user_id, f"<b>🔄 Автоматический мониторинг (диск):</b>\n<pre>{disk_result.stdout}</pre>", parse_mode="HTML")
+        
+        # Отправляем данные использования системы
+        cpu_percent = psutil.cpu_percent(interval=1)
+        ram = psutil.virtual_memory()
+        ram_used = ram.used / (1024 ** 3)
+        ram_total = ram.total / (1024 ** 3)
+        ram_percent = ram.percent
+
+        usage_message = (
+            f"<b>🔄 Автоматический мониторинг (ресурсы):</b>\n"
+            f"🧠 CPU: <b>{cpu_percent}%</b>\n"
+            f"💾 RAM: <b>{ram_used:.2f} GB</b> / <b>{ram_total:.2f} GB</b> ({ram_percent}%)"
+        )
+        await bot.send_message(user_id, usage_message, parse_mode="HTML")
+    except Exception as e:
+        print(f"Ошибка при отправке мониторинга пользователю {user_id}: {e}")
+
+async def monitoring_task():
+    """Фоновая задача для периодической отправки мониторинга."""
+    while True:
+        await asyncio.sleep(MONITORING_INTERVAL)
+        for user_id in list(MONITORING_USERS):
+            if validate(user_id):
+                await send_monitoring_data(user_id)
+            else:
+                MONITORING_USERS.discard(user_id)
+
+@dp.message(Command("monitor_start"))
+async def start_monitoring(message: types.Message):
+    """Включение периодического мониторинга."""
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
+        return
+    
+    MONITORING_USERS.add(message.from_user.id)
+    await message.answer("✅ Автоматический мониторинг включен. Вы будете получать данные каждые 5 минут.")
+
+@dp.message(Command("monitor_stop"))
+async def stop_monitoring(message: types.Message):
+    """Выключение периодического мониторинга."""
+    if message.from_user.id in MONITORING_USERS:
+        MONITORING_USERS.discard(message.from_user.id)
+        await message.answer("⏹ Автоматический мониторинг отключен.")
+    else:
+        await message.answer("ℹ️ Автоматический мониторинг уже отключен.")
+
+async def on_startup(dp):
+    """Действия при запуске бота."""
+    asyncio.create_task(monitoring_task())
+
 if __name__ == "__main__":
+    dp.startup.register(on_startup)
     dp.run_polling(bot)
