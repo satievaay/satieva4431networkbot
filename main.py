@@ -42,7 +42,9 @@ async def auth_command(message: types.Message):
     input_password = parts[1].strip()
     input_hash = hashlib.md5(input_password.encode()).hexdigest()
     correct_hash = os.getenv("BOT_PASSWORD")
-
+    if message.from_user.id not in ALLOWED_USER_IDS:
+        await message.answer("⛔️ Доступ запрещен.")
+        return
     if input_hash == correct_hash:
         SESSIONS[message.from_user.id] = datetime.now() + AUTH_DURATION
         await message.answer("✅ Успешная авторизация. Доступ активен на 1 час.")
