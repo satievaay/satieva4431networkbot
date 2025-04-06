@@ -54,7 +54,12 @@ scheduler.add_job(send_usage_and_disk, 'interval', hours=1)
 async def start(message: types.Message):
     await message.answer("🚀 Бот активирован!")
 
-if __name__ == "__main__":
+async def main():
     # Запуск планировщика
     scheduler.start()
-    dp.run_polling(bot)
+    # Запуск polling для обработки сообщений
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    # Запускаем event loop для всего приложения
+    asyncio.run(main())
