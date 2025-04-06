@@ -51,7 +51,7 @@ async def auth_command(message: types.Message):
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    if not validate(message.from_user.id):
+    if (message.from_user.id not in ALLOWED_USER_IDS):
         await message.answer("⛔️ Доступ запрещен.")
         return
     await message.answer("🚀 Бот для управления сервером активирован!")
@@ -59,7 +59,7 @@ async def start(message: types.Message):
 @dp.message(Command("disk"))
 async def disk_usage(message: types.Message):
     if not validate(message.from_user.id):
-        await message.answer("⛔️ Доступ запрещен.")
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     result = subprocess.run(["df", "-h"], capture_output=True, text=True)
     await message.answer(f"<pre>{result.stdout}</pre>", parse_mode="HTML")
@@ -67,7 +67,7 @@ async def disk_usage(message: types.Message):
 @dp.message(Command("service_status"))
 async def service_status(message: types.Message):
     if not validate(message.from_user.id):
-        await message.answer("⛔️ Доступ запрещен.")
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -93,8 +93,8 @@ async def service_status(message: types.Message):
 
 @dp.message(Command("ping"))
 async def ping_host(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
-        await message.answer("⛔️ Доступ запрещен.")
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -123,8 +123,8 @@ async def ping_host(message: types.Message):
 
 @dp.message(Command("usage"))
 async def system_usage(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
-        await message.answer("⛔️ Доступ запрещен.")
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     cpu_percent = psutil.cpu_percent(interval=1)
     ram = psutil.virtual_memory()
@@ -143,8 +143,8 @@ async def system_usage(message: types.Message):
 
 @dp.message(Command("main_services_status"))
 async def main_services_status(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
-        await message.answer("⛔️ Доступ запрещен.")
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     status_lines = ["📋 <b>Статус сервисов:</b>"]
 
@@ -164,8 +164,8 @@ async def main_services_status(message: types.Message):
 
 @dp.message(Command("restart_service"))
 async def restart_service(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
-        await message.answer("⛔️ Доступ запрещен.")
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -194,8 +194,8 @@ async def restart_service(message: types.Message):
 
 @dp.message(Command("traceroute"))
 async def traceroute(message: types.Message):
-    if not validate(message.from_user.id, message.chat.id):
-        await message.answer("⛔️ Доступ запрещен.")
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     parts = message.text.strip().split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip():
@@ -218,8 +218,8 @@ async def traceroute(message: types.Message):
 @dp.message(Command("backup"))
 async def backup_configs(message: types.Message):
     user_id = message.from_user.id
-    if not validate(user_id, message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
 
     config_paths = os.getenv("BACKUP_FILES", "").split(",")
