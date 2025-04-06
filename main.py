@@ -31,7 +31,8 @@ async def auth_command(message: types.Message):
     if message.chat.type != "private":
         await message.answer(
         "🔐 Авторизация возможна только в ЛС бота. Перейти в ЛС: "
-        "[Написать боту](https://t.me/Satieva4431Bot?start)")
+        '<a href="https://t.me/Satieva4431Bot?start">Написать боту</a>',
+        parse_mode="HTML")
         return
 
     parts = message.text.strip().split(maxsplit=1)
