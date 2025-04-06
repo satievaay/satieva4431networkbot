@@ -1,7 +1,7 @@
 import os
 import subprocess
-import hashlib
 import psutil
+import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
@@ -14,21 +14,25 @@ dp = Dispatcher()
 
 # Загружаем настройки
 CHAT_ID = os.getenv("CHAT_ID")  # ID чата для отправки сообщений
-AUTH_DURATION = timedelta(hours=1)
+AUTH_DURATION = timedelta(minutes=5)
 SESSIONS = {}  # user_id: expiry_datetime
 
 # Создаем планировщик
 scheduler = AsyncIOScheduler()
 
 def send_usage_and_disk():
-    # Отправка команды /usage
-    usage_message = get_system_usage()
-    # Отправка команды /disk
-    disk_message = get_disk_usage()
+    try:
+        # Отправка команды /usage
+        usage_message = get_system_usage()
+        # Отправка команды /disk
+        disk_message = get_disk_usage()
 
-    # Отправляем сообщение в указанный чат
-    bot.send_message(CHAT_ID, usage_message)
-    bot.send_message(CHAT_ID, disk_message)
+        # Отправляем сообщение в указанный чат
+        bot.send_message(CHAT_ID, usage_message)
+        bot.send_message(CHAT_ID, disk_message)
+        print("Messages sent to chat")  # Логирование успешной отправки сообщений
+    except Exception as e:
+        print(f"Error in sending messages: {e}")
 
 def get_system_usage():
     cpu_percent = psutil.cpu_percent(interval=1)
