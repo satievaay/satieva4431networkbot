@@ -1,40 +1,76 @@
 import os
 import subprocess
 import psutil
+import hashlib
+import tarfile
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 load_dotenv()
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
 
-SERVICES = ["cron", "ssh", "sysstat", "mysql"]  # Список основных сервисов сервера (для работы команды main_services_status)
+# Константы
+SERVICES = ["cron", "ssh", "sysstat", "mysql"]
+AUTH_DURATION = timedelta(hours=1)
+SESSIONS = {}  # user_id: expiry_datetime
 
-def validate(user_id, chat_id: int) -> bool:
-    allowed_user_ids = list(map(int, os.getenv("ALLOWED_USER_IDS").split(',')))
-    allowed_chat_ids = list(map(int, os.getenv("ALLOWED_CHAT_IDS").split(',')))
+def is_authenticated(user_id: int) -> bool:
+    return user_id in SESSIONS and SESSIONS[user_id] > datetime.now()
+
+def validate(user_id: int, chat_id: int) -> bool:
+    # Проверка в ЛС — только авторизация
+    if chat_id == user_id:
+        return is_authenticated(user_id)
+    # В группах — по ID
+    allowed_user_ids = list(map(int, os.getenv("ALLOWED_USER_IDS", "").split(',')))
+    allowed_chat_ids = list(map(int, os.getenv("ALLOWED_CHAT_IDS", "").split(',')))
     return (user_id in allowed_user_ids) and (chat_id in allowed_chat_ids)
+
+@dp.message(Command("auth"))
+async def auth_command(message: types.Message):
+    if message.chat.type != "private":
+        await message.answer(
+        "🔐 Авторизация возможна только в ЛС бота. Перейти в ЛС: "
+        "[Написать боту](https://t.me/Satieva4431Bot?start)")
+        return
+
+    parts = message.text.strip().split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Введите пароль, например:\n<code>/auth mypassword</code>", parse_mode="HTML")
+        return
+
+    input_password = parts[1].strip()
+    input_hash = hashlib.md5(input_password.encode()).hexdigest()
+    correct_hash = os.getenv("BOT_PASSWORD_HASH")
+
+    if input_hash == correct_hash:
+        SESSIONS[message.from_user.id] = datetime.now() + AUTH_DURATION
+        await message.answer("✅ Успешная авторизация. Доступ активен на 1 день.")
+    else:
+        await message.answer("❌ Неверный пароль.")
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     await message.answer("🚀 Бот для управления сервером активирован!")
 
 @dp.message(Command("disk"))
 async def disk_usage(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     result = subprocess.run(["df", "-h"], capture_output=True, text=True)
     await message.answer(f"<pre>{result.stdout}</pre>", parse_mode="HTML")
 
 @dp.message(Command("service_status"))
 async def service_status(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -60,8 +96,8 @@ async def service_status(message: types.Message):
 
 @dp.message(Command("ping"))
 async def ping_host(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -90,8 +126,8 @@ async def ping_host(message: types.Message):
 
 @dp.message(Command("usage"))
 async def system_usage(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     # Получить информацию по загруженности процессора и ОЗУ
     cpu_percent = psutil.cpu_percent(interval=1)
@@ -111,8 +147,8 @@ async def system_usage(message: types.Message):
 
 @dp.message(Command("main_services_status"))
 async def main_services_status(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     status_lines = ["📋 <b>Статус сервисов:</b>"]
 
@@ -133,8 +169,8 @@ async def main_services_status(message: types.Message):
 
 @dp.message(Command("restart_service"))
 async def restart_service(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
 
@@ -165,8 +201,8 @@ async def restart_service(message: types.Message):
 
 @dp.message(Command("traceroute"))
 async def traceroute(message: types.Message):
-    if not validate(message.from_user.id,message.chat.id):
-        await message.answer("Доступ запрещен.")
+    if not validate(message.from_user.id, message.chat.id):
+        await message.answer("⛔️ Доступ запрещен.")
         return
     parts = message.text.strip().split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip():
@@ -185,6 +221,40 @@ async def traceroute(message: types.Message):
         await message.answer(f"🔍 Трассировка маршрута до <b>{host}</b>:\n<pre>{result.stdout}</pre>", parse_mode="HTML")
     except Exception as e:
         await message.answer(f"❌ Ошибка при трассировке маршрута: <code>{str(e)}</code>", parse_mode="HTML")
+
+@dp.message(Command("backup"))
+async def backup_configs(message: types.Message):
+    user_id = message.from_user.id
+    if not validate(user_id, message.chat.id):
+        await message.answer("Доступ запрещен.")
+        return
+
+    config_paths = os.getenv("BACKUP_FILES", "").split(",")
+    backup_dir = os.getenv("BACKUP_DIR", "/tmp")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    archive_name = f"backup_{timestamp}.tar.gz"
+    archive_path = os.path.join(backup_dir, archive_name)
+
+    os.makedirs(backup_dir, exist_ok=True)
+
+    try:
+        with tarfile.open(archive_path, "w:gz") as archive:
+            for path in config_paths:
+                path = path.strip()
+                if os.path.exists(path):
+                    archive.add(path, arcname=os.path.basename(path))
+                else:
+                    await message.answer(f"⚠️ Файл не найден: {path}")
+
+        await message.answer("✅ Бэкап создан. Архив будет отправлен вам в личные сообщения.")
+
+        try:
+            await bot.send_document(user_id, types.FSInputFile(archive_path), caption="📦 Резервная копия конфигурации")
+        except aiogram.exceptions.TelegramForbiddenError:
+            await message.answer("❗ Не удалось отправить файл в личные сообщения. Убедитесь, что вы начали чат с ботом (нажмите /start в ЛС).")
+
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при создании бэкапа: <code>{str(e)}</code>", parse_mode="HTML")
 
 if __name__ == "__main__":
     dp.run_polling(bot)
