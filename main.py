@@ -16,7 +16,7 @@ dp = Dispatcher()
 # Константы
 SERVICES = ["cron", "ssh", "sysstat", "mysql"]
 AUTH_DURATION = timedelta(hours=1)
-ALLOWED_USER_IDS = list(map(int, os.getenv("ALLOWED_USER_IDS", "").split(',')))  # Загрузка разрешенных пользователей из .env
+ALLOWED_USER_IDS = list(map(int, os.getenv("ALLOWED_USER_IDS", "").split(',')))
 SESSIONS = {}  # user_id: expiry_datetime
 MONITORING_INTERVAL = 300  # 5 минут в секундах
 MONITORING_USERS = set()  # Пользователи, получающие мониторинг
@@ -307,7 +307,7 @@ async def stop_monitoring(message: types.Message):
     else:
         await message.answer("ℹ️ Автоматический мониторинг уже отключен.")
 
-async def on_startup(dp):
+async def on_startup(bot: Bot):
     """Действия при запуске бота."""
     asyncio.create_task(monitoring_task())
 
