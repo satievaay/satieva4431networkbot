@@ -34,7 +34,7 @@ async def set_bot_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="Запуск бота"),
         BotCommand(command="reboot", description="Перезапуск сервера"),
-        BotCommand(command="update", description="Обновить информацию об актуальных версиях"),
+        BotCommand(command="update", description="Обновить информацию об актуальных версиях пакетов"),
         BotCommand(command="upgrade", description="Обновление пакетов"),
         BotCommand(command="auth", description="Авторизация"),
         BotCommand(command="disk", description="Показать использование диска"),
@@ -101,6 +101,29 @@ async def cmd_upgrade(message: types.Message):
         await message.reply(f"📝 Результат:\n<pre>{output[:4000]}</pre>", parse_mode="HTML")
     except Exception as e:
         await message.reply(f"❌ Ошибка:\n<pre>{str(e)}</pre>", parse_mode="HTML")
+
+@dp.message(Command("network_status"))
+async def cmd_network_status(message: types.Message):
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
+        return
+    try:
+        # Получаем сетевую информацию через команду ip
+        result = subprocess.check_output(['ip', 'addr'], stderr=subprocess.STDOUT).decode()
+        
+        # Можно также получить информацию по статистике сети
+        stats = subprocess.check_output(['ip', '-s', 'link'], stderr=subprocess.STDOUT).decode()
+
+        response = f"<b>📡 Сетевые интерфейсы:</b>\n<pre>{result}</pre>\n<b>📊 Статистика:</b>\n<pre>{stats}</pre>"
+
+        # Telegram ограничивает длину сообщений
+        if len(response) > 4000:
+            response = response[:3900] + "\n...</pre>\n<i>Результат обрезан из-за длины.</i>"
+
+        await message.reply(response, parse_mode="HTML")
+    
+    except subprocess.CalledProcessError as e:
+        await message.reply(f"❌ Ошибка при получении информации:\n<pre>{e.output.decode()}</pre>", parse_mode="HTML")
 
 @dp.message(Command("start"))
 async def start(message: types.Message):
