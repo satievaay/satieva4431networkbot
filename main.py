@@ -3,6 +3,7 @@ import subprocess
 import psutil
 import hashlib
 import tarfile
+import html
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
@@ -108,23 +109,23 @@ async def cmd_network_status(message: types.Message):
         await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
         return
     try:
-        # Получаем сетевую информацию через команду ip
         result = subprocess.check_output(['ip', 'addr'], stderr=subprocess.STDOUT).decode()
-        
-        # Можно также получить информацию по статистике сети
         stats = subprocess.check_output(['ip', '-s', 'link'], stderr=subprocess.STDOUT).decode()
 
-        response = f"<b>📡 Сетевые интерфейсы:</b>\n<pre>{result}</pre>\n<b>📊 Статистика:</b>\n<pre>{stats}</pre>"
+        # Экранируем текст
+        safe_result = html.escape(result)
+        safe_stats = html.escape(stats)
 
-        # Telegram ограничивает длину сообщений
+        response = f"<b>📡 Сетевые интерфейсы:</b>\n<pre>{safe_result}</pre>\n<b>📊 Статистика:</b>\n<pre>{safe_stats}</pre>"
+
         if len(response) > 4000:
             response = response[:3900] + "\n...</pre>\n<i>Результат обрезан из-за длины.</i>"
 
         await message.reply(response, parse_mode="HTML")
-    
-    except subprocess.CalledProcessError as e:
-        await message.reply(f"❌ Ошибка при получении информации:\n<pre>{e.output.decode()}</pre>", parse_mode="HTML")
 
+    except subprocess.CalledProcessError as e:
+        await message.reply(f"❌ Ошибка:\n<pre>{html.escape(e.output.decode())}</pre>", parse_mode="HTML")
+        
 @dp.message(Command("start"))
 async def start(message: types.Message):
     if (message.from_user.id not in ALLOWED_USER_IDS):
