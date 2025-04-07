@@ -33,6 +33,9 @@ def validate(user_id: int) -> bool:
 async def set_bot_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="Запуск бота"),
+        BotCommand(command="reboot", description="Перезапуск сервера"),
+        BotCommand(command="update", description="Обновить информацию об актуальных версиях"),
+        BotCommand(command="upgrade", description="Обновление пакетов"),
         BotCommand(command="auth", description="Авторизация"),
         BotCommand(command="disk", description="Показать использование диска"),
         BotCommand(command="usage", description="Показать загрузку CPU и RAM"),
@@ -73,12 +76,50 @@ async def auth_command(message: types.Message):
     else:
         await message.answer("❌ Неверный пароль.")
 
+@dp.message(Command("update"))
+async def cmd_update(message: types.Message):
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
+        return
+    await message.reply("🔄 Выполняется `apt update`...")
+    try:
+        result = subprocess.run(['sudo', 'apt', 'update', '-y'], capture_output=True, text=True)
+        output = result.stdout + result.stderr
+        await message.reply(f"📝 Результат:\n<pre>{output[:4000]}</pre>", parse_mode="HTML")
+    except Exception as e:
+        await message.reply(f"❌ Ошибка:\n<pre>{str(e)}</pre>", parse_mode="HTML")
+
+@dp.message(Command("upgrade"))
+async def cmd_upgrade(message: types.Message):
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
+        return
+    await message.reply("🔄 Выполняется `apt upgrade`...")
+    try:
+        result = subprocess.run(['sudo', 'apt', 'upgrade', '-y'], capture_output=True, text=True)
+        output = result.stdout + result.stderr
+        await message.reply(f"📝 Результат:\n<pre>{output[:4000]}</pre>", parse_mode="HTML")
+    except Exception as e:
+        await message.reply(f"❌ Ошибка:\n<pre>{str(e)}</pre>", parse_mode="HTML")
+
 @dp.message(Command("start"))
 async def start(message: types.Message):
     if (message.from_user.id not in ALLOWED_USER_IDS):
         await message.answer("⛔️ Доступ запрещен.")
         return
     await message.answer("🚀 Бот для управления сервером активирован!")
+
+@dp.message(Command("reboot"))
+async def cmd_reboot(message: types.Message):
+    if not validate(message.from_user.id):
+        await message.answer("⛔️ Доступ запрещен. Для авторизации напишите /auth.")
+        return
+    await message.reply("♻️ Перезагрузка системы, пожалуйста, подождите...")
+
+    try:
+        subprocess.Popen(['sudo', 'reboot'])
+    except Exception as e:
+        await message.reply(f"❌ Ошибка при перезагрузке:\n<pre>{str(e)}</pre>", parse_mode="HTML")
 
 @dp.message(Command("disk"))
 async def disk_usage(message: types.Message):
