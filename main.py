@@ -55,28 +55,48 @@ async def set_bot_commands(bot: Bot):
 async def auth_command(message: types.Message):
     if message.chat.type != "private":
         await message.answer(
-        "🔐 Авторизация возможна только в ЛС бота. Перейти в ЛС: "
-        '<a href="https://t.me/Satieva4431Bot?start">Написать боту</a>',
-        parse_mode="HTML")
+            "🔐 Авторизация возможна только в ЛС бота. Перейти в ЛС: "
+            '<a href="https://t.me/Satieva4431Bot?start">Написать боту</a>',
+            parse_mode="HTML"
+        )
         return
 
     parts = message.text.strip().split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("Введите пароль, например:\n<code>/auth mypassword</code>", parse_mode="HTML")
+        await message.answer(
+            "Введите пароль, например:\n<code>/auth mypassword</code>",
+            parse_mode="HTML"
+        )
+        try:
+            await message.delete()
+        except Exception as e:
+            print("Не удалось удалить сообщение:", e)
         return
 
     input_password = parts[1].strip()
     input_hash = hashlib.md5(input_password.encode()).hexdigest()
     correct_hash = os.getenv("BOT_PASSWORD")
+
     if message.from_user.id not in ALLOWED_USER_IDS:
         await message.answer("⛔️ Доступ запрещен.")
+        try:
+            await message.delete()
+        except Exception as e:
+            print("Не удалось удалить сообщение:", e)
         return
+
     if input_hash == correct_hash:
         SESSIONS[message.from_user.id] = datetime.now() + AUTH_DURATION
         await message.answer("✅ Успешная авторизация. Доступ активен на 1 час.")
     else:
         await message.answer("❌ Неверный пароль.")
 
+    # Удаление исходного сообщения с паролем
+    try:
+        await message.delete()
+    except Exception as e:
+        print("Не удалось удалить сообщение:", e)
+        
 @dp.message(Command("update"))
 async def cmd_update(message: types.Message):
     if not validate(message.from_user.id):
